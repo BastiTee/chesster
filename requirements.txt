@@ -1,0 +1,4 @@
+bottle >= 0.12
+Chessnut >= 0.3.0
+tabulate >= 0.7.5
+python-dateutil >= 2.5.1
