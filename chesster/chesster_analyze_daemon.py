@@ -5,7 +5,7 @@ import logging
 from chesster.core.daemon import ChessterDaemon
 
 
-parser = argparse.ArgumentParser(description='Analyze PGN games')
+parser = argparse.ArgumentParser(description='A daemon to analyze PGN-file games in a watch folder.')
 parser.add_argument('-i', metavar='<WORKDIR>', help='Input working directory.')
 parser.add_argument('-t', metavar='<T_MS>', help='Engine time per move in ms'
                     + ' (default: 5000).')

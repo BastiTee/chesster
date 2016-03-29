@@ -5,7 +5,7 @@ from multiprocessing import cpu_count
 from os import path
 from chesster.core.uci_frontend import ChessterUciFrontend    
 
-parser = argparse.ArgumentParser(description='Analyze PGN games')
+parser = argparse.ArgumentParser(description='Analyze and annotate one or more games provided by a PGN file.')
 parser.add_argument('-i', metavar='<INPUT-FILE>', help='Input PGN file.')
 parser.add_argument('-o', metavar='<OUTPUT-DIR>', help='PGN output folder.')
 parser.add_argument('-t', metavar='<T_MS>', help='Engine time per move in ms'

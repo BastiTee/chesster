@@ -5,7 +5,7 @@ import logging
 from chesster.core.server import ChessterServer
 
 
-parser = argparse.ArgumentParser(description='Setup a chesster_server server')
+parser = argparse.ArgumentParser(description='A server-frontend to send UCI commands over the web.')
 parser.add_argument('-d', metavar='<HOSTNAME>', help='Hostname (default: localhost).')
 parser.add_argument('-p', metavar='<PORT>', help='Port (default: 8000).')
 parser.add_argument('-v', action='store_true', help='Verbose output.')

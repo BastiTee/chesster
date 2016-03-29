@@ -9,7 +9,7 @@ from chesster.core.position import Position
 from chesster.core.uci_frontend import ChessterUciFrontend
 
 
-parser = argparse.ArgumentParser(description='Play a game of chess.')
+parser = argparse.ArgumentParser(description='A command-line chess UI to play against Stockfish.')
 parser.add_argument('-b', action='store_true', help='Play as black.')
 parser.add_argument('-v', action='store_true', help='Verbose output.')
 parser.add_argument('-l', metavar='<LEVEL>', help='Engine level (1-20).', 
