@@ -1,19 +1,17 @@
 import logging
-from os import makedirs, listdir, rename, remove
+from os import makedirs, listdir, rename
 from os import path
 import re 
 from shutil import copy
 from time import time
-
 from Chessnut import Game
 from dateutil.parser import parse
 from tabulate import tabulate
-
-from chesster.core.externals import get_cmd_process
+from bptbx.b_cmdline import get_command_process
+from bptbx.b_iotools import remove_silent
 from chesster.core.position import Position
 from chesster.core.tagset import get_pgn_tag_string, ChessterTagSet, \
 append_chesster_tagset_ordered
-
 
 class ChessterAnalyzer:
     
@@ -34,7 +32,7 @@ class ChessterAnalyzer:
     def analyze(self, pgn_in_file, pgn_out_folder, engine_movetime,
                 create_playbook, delete_source):
         
-        keep_temp_files=False # dev
+        keep_temp_files = False  # dev
         
         pgn_in_file, pgn_out_folder = self._verify_io_settings(pgn_in_file, pgn_out_folder)
                 
@@ -46,7 +44,7 @@ class ChessterAnalyzer:
         logging.info('-- splitting input file..')
         cmd = ('{0} {1} -#1'
                .format(self.server.pgn_extract_path, pgn_in_file))
-        p = get_cmd_process(cmd, pgn_out_folder, stdin=None, stdout=None)
+        p = get_command_process(cmd, pgn_out_folder, stdin=None, stdout=None)
         p.wait()
         
         # rename input files 
@@ -65,7 +63,7 @@ class ChessterAnalyzer:
             basename = path.basename(name)
             basename = re.sub('\\.pgn$', '', basename)
             new_name = path.join(pgn_out_folder, basename.zfill(5) + '_01_split.pgn')
-            self._remove_silent(new_name) 
+            remove_silent(new_name) 
             rename(old_name, new_name)
             analysis_input_files.append(new_name)
         
@@ -81,7 +79,7 @@ class ChessterAnalyzer:
         # cleanup
         if not keep_temp_files:
             for temporary_file in self.temporary_files:
-                self._remove_silent(temporary_file)
+                remove_silent(temporary_file)
                 
         for analysis_output_file in analysis_output_files:
             game_id = path.basename(analysis_output_file).split('_')[0]
@@ -89,24 +87,24 @@ class ChessterAnalyzer:
                                 self._get_filesafe_game_string(game_id))
             logging.info('{} <<< {}'
                          .format(to_name, analysis_output_file))
-            self._remove_silent(to_name)
+            remove_silent(to_name)
             rename(analysis_output_file, to_name)
 
         if delete_source:
-            self._remove_silent(pgn_in_file)
+            remove_silent(pgn_in_file)
 
     def _verify_io_settings(self, pgn_in_file, pgn_out_folder):
         if pgn_in_file == None:
-            raise IOError( 'pgn_in_file cannot be None.')
+            raise IOError('pgn_in_file cannot be None.')
         if pgn_out_folder == None:
-            raise IOError( 'pgn_out_folder cannot be None.')
+            raise IOError('pgn_out_folder cannot be None.')
         pgn_in_file = path.abspath(pgn_in_file)
         pgn_out_folder = path.abspath(pgn_out_folder)
         try:
             with open(pgn_in_file):
                 pass
         except IOError:
-            raise IOError( 'pgn_in_file \'{}\' does not exist!'.format(pgn_in_file))
+            raise IOError('pgn_in_file \'{}\' does not exist!'.format(pgn_in_file))
         if not path.exists(pgn_out_folder):
             makedirs(pgn_out_folder)
         return pgn_in_file, pgn_out_folder 
@@ -186,7 +184,7 @@ class ChessterAnalyzer:
         cmd = ('{0} {1} -s --output {2}'
                .format(self.server.pgn_extract_path, path.join(pgn_out_folder, file_merged),
                file_fin))
-        p = get_cmd_process(cmd, stdout=None)
+        p = get_command_process(cmd, stdout=None)
         p.wait() 
         
         return file_fin
@@ -209,7 +207,7 @@ class ChessterAnalyzer:
     def _annotate_game(self, chessgame, moves, game_id, pgn_out_folder, result, engine_movetime):
         logging.info('-- analysing game #{0}'.format(game_id))
 
-        use_engine = True # debug
+        use_engine = True  # debug
         # analyze game through engine 
         positions = []
         move_idx = 0
@@ -232,19 +230,20 @@ class ChessterAnalyzer:
             positions.append(position)
             move_idx += 1
         
-        # go reversed through positions and compare/annotate 
+        # go reversed through positions and compare/annotate_position 
         next_position = None
         for position in reversed(positions):
-            position.annotate(next_position)
+            position.annotate_position(next_position)
             next_position = position
-        
+
+        # DEBUG OUTPUT 
         debug_headers = []
         debug_positions = []
         for position in positions:
-            data, debug_headers = position.get_info_string()
-            debug_positions.append(data)
+            debug_string, debug_headers = position.get_debug_string()
+            debug_positions.append(debug_string)
         logging.debug(tabulate(debug_positions, debug_headers, tablefmt='psql'))
- 
+        
         game_annotation = []
         for position in positions:
             if not position.move_played:
@@ -276,7 +275,7 @@ class ChessterAnalyzer:
         # read existing tags 
         cmd = ('{} {} -s -e{}'.format(self.server.pgn_extract_path,
                 pgn_in_file, self.server.pgn_extract_eco))
-        p = get_cmd_process(cmd, stdin=None)
+        p = get_command_process(cmd, stdin=None)
         fixed_tags = []
         for line in p.stdout.readlines():
             line = line.strip()
@@ -367,7 +366,7 @@ class ChessterAnalyzer:
         
         # apply search replace patterns from file
         pattern_file = None
-        pattern_file_path = path.join(self.script_path, 
+        pattern_file_path = path.join(self.script_path,
                                       'tag_replace_patterns.properties')
         try:
             pattern_file = open(pattern_file_path)
@@ -379,14 +378,13 @@ class ChessterAnalyzer:
             search_replace = pattern_line.split('=')
             if len(search_replace) != 2:
                 continue
-            print search_replace
             re.sub(search_replace[0], search_replace[1], tag, re.IGNORECASE)
         
         # Normalize date 
         if '[Date' in tag:
             _, value = self._pgn_tag_to_keyvalue(tag)
             date_obj = parse(value)
-            tag = '[Date "{}.{}.{}]"'.format(date_obj.year, 
+            tag = '[Date "{}.{}.{}]"'.format(date_obj.year,
                     str(date_obj.month).zfill(2), str(date_obj.day).zfill(2))
         return tag
 
@@ -402,7 +400,7 @@ class ChessterAnalyzer:
         chessgame = Game()
         cmd = ('{0} {1} -Wlalg --nomovenumbers --nocomments --nochecks -V --notags -s'
        .format(self.server.pgn_extract_path, pgn_in_file))
-        p = get_cmd_process(cmd)
+        p = get_command_process(cmd)
         moves = re.sub('[\r\n]+', ' ', ''.join(p.stdout.readlines()))
         moves = filter(self._filter_move, moves.split(' '))
         result = moves[-1]
@@ -410,42 +408,6 @@ class ChessterAnalyzer:
         for i in range(0, len(moves)):
             chessgame.apply_move(moves[i])
         # extract existing comments 
-        comments= {}
+        comments = {}
         # TODO 
         return chessgame, moves, result, comments
-    
-    def _remove_silent(self, path):
-        try:
-            remove(path)
-        except OSError:
-            pass  # catch if file does not exist
-
-# TESTING PURPOSES
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    analyzer = ChessterAnalyzer(None)
-    assert analyzer._get_better_position(-1.0, 1.0, True) == '1.0'
-    assert analyzer._get_better_position(1.0, -1.0, True) == '1.0'
-    assert analyzer._get_better_position(-1.0, 1.0, False) == '-1.0'
-    assert analyzer._get_better_position(1.0, -1.0, False) == '-1.0'
-    assert analyzer._get_better_position(1.0, 1.0, True) == '1.0'
-    assert analyzer._get_better_position(1.0, 1.0, False) == '1.0'
-    assert analyzer._get_better_position(0.0, 0.0, True) == '0.0'
-    assert analyzer._get_better_position(0.0, 0.0, False) == '0.0'
-    assert analyzer._get_better_position(0.0, 'M1', True) == 'M1'
-    assert analyzer._get_better_position('M1', 0.0, True) == 'M1'
-    assert analyzer._get_better_position(0.0, 'M-1', True) == '0.0'
-    assert analyzer._get_better_position(0.0, 'M1', False) == '0.0'
-    assert analyzer._get_better_position(0.0, 'M-1', False) == 'M-1'
-    assert analyzer._get_better_position('M1', 'M3', True) == 'M1'
-    assert analyzer._get_better_position('M1', 'M3', False) == 'M3'
-    assert analyzer._get_better_position('M1', 'M0', True, True) == 'M0'
-    assert analyzer._get_better_position('M-1', 'M0', False, True) == 'M-1'
-    assert analyzer._get_better_position('M1', 'M0', True, False) == 'M1'
-    assert analyzer._get_better_position('M-1', 'M0', False, False) == 'M0'
-    assert analyzer._get_better_position(0.05, 'M0', True, True) == 'M0'
-    assert analyzer._get_better_position(0.05, 'M0', True, False) == '0.05'
-    assert analyzer._get_better_position(0.05, 'M0', False, True) == '0.05'
-    assert analyzer._get_better_position(0.05, 'M0', False, False) == 'M0'
-    
-    

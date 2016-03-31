@@ -1,14 +1,12 @@
 import logging 
 from re import sub
-
 from bottle import request, abort, response, route, run
-
 from chesster.core.uci_frontend import ChessterUciFrontend
-
 
 class ChessterServer:
     
     uci_frontend = ChessterUciFrontend()
+    """Frontend for accessing UCI-engine and PGN-extract"""
     
     def __init__(self, host, port):
         logging.info('Obtained new server instance.')
@@ -51,7 +49,7 @@ class ChessterServer:
     
     def _bottle_generate_response(self, output, request, response):
         response.add_header('Content-Type', 'text/html; charset=utf-8')
-        content = '<html><style>* {{font-family:Consolas;}}</style><body>{0}</body></html>'.format(
-                                                '<br/>'.join(output))
+        content = ('<html><style>* {{font-family:Consolas;}}</style><body>'
+        + '{0}</body></html>'.format('<br/>'.join(output)))
         content = sub('\n', '<br/>', content)
         return content

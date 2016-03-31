@@ -1,27 +1,22 @@
 #!/usr/bin/python
 import argparse 
-import logging 
+parser = argparse.ArgumentParser(
+        description='A command-line chess UI to play against Stockfish.')
+parser.add_argument('-b', action='store_true', 
+        help='Play as black.')
+parser.add_argument('-v', action='store_true', 
+        help='Verbose output.')
+parser.add_argument('-l', metavar='<LEVEL>', default=1, 
+        help='Engine level (1-20).')
+args = parser.parse_args()
+
+from bptbx.b_logging import setup_logging
+setup_logging(args.v)
 
 from Chessnut import Game
 from Chessnut.game import InvalidMove
-
 from chesster.core.position import Position
 from chesster.core.uci_frontend import ChessterUciFrontend
-
-
-parser = argparse.ArgumentParser(description='A command-line chess UI to play against Stockfish.')
-parser.add_argument('-b', action='store_true', help='Play as black.')
-parser.add_argument('-v', action='store_true', help='Verbose output.')
-parser.add_argument('-l', metavar='<LEVEL>', help='Engine level (1-20).', 
-                    default=1)
-args = parser.parse_args()
-
-if args.v:
-    logging.basicConfig(level=logging.DEBUG, 
-                        format='[%(levelname)s]\t%(message)s')
-else:
-    logging.basicConfig(level=logging.INFO, 
-                        format='[%(levelname)s]\t%(message)s')
 
 uci_frontend = ChessterUciFrontend()
 chessgame = Game()
