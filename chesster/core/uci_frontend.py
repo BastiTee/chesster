@@ -1,3 +1,4 @@
+import logging
 from os import path
 from threading import Thread, Lock
 from time import sleep
@@ -29,7 +30,9 @@ class ChessterUciFrontend:
     
     def __init__(self):
         parent_dir = path.dirname(self.script_path)
-        if 'windows' in get_platform():
+        platform_type = get_platform()
+        logging.debug('Platform type is {}'.format(platform_type))
+        if 'windows' in platform_type or 'cygwin' in platform_type:
             self.engine_path = path.join(parent_dir, 
                                     'stockfish/stockfish-7-x64-win.exe')
             self.pgn_extract_path = path.join(parent_dir, 
