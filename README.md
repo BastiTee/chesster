@@ -1,4 +1,4 @@
-# Chesster
+## Chesster
 > A Stockfish/UCI & pgn-extract frontend for Python.
 
 This module contains 
