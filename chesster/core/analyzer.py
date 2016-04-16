@@ -32,7 +32,7 @@ class ChessterAnalyzer:
     def analyze(self, pgn_in_file, pgn_out_folder, engine_movetime,
                 create_playbook, delete_source):
         
-        keep_temp_files = False  # dev
+        keep_temp_files = False # dev
         
         pgn_in_file, pgn_out_folder = self._verify_io_settings(pgn_in_file, pgn_out_folder)
                 
@@ -378,7 +378,7 @@ class ChessterAnalyzer:
             search_replace = pattern_line.split('=')
             if len(search_replace) != 2:
                 continue
-            re.sub(search_replace[0], search_replace[1], tag, re.IGNORECASE)
+            tag = re.sub(search_replace[0], search_replace[1], tag, re.IGNORECASE)
         
         # Normalize date 
         if '[Date' in tag:
