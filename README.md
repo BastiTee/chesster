@@ -1,6 +1,8 @@
 ## Chesster
 > A Stockfish/UCI & pgn-extract frontend for Python.
 
+[![GitHub release](https://img.shields.io/github/release/BastiTee/chesster.svg?maxAge=2592000)]()
+
 This module contains 
 * a Python-frontend for any UCI-compatible chess engine (e.g. [Stockfish](https://stockfishchess.org/)) with Stockfish being included.
 * a Python-frontend for [pgn-extract](https://www.cs.kent.ac.uk/people/staff/djb/pgn-extract/).
