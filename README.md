@@ -8,8 +8,6 @@ This module contains
 * a command-line tool to analyse and annotate chess games in PGN format. 
 * a simple standalone-server to send UCI commands over the web to a chesster instance.
 
-This project is in alfa state and thus very experimental. I try to make sure that the command-line tools run out of the box.
-
 ## Tools 
 
 ### chesster_analyze
