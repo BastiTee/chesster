@@ -1,5 +1,7 @@
 #!/bin/bash
 
+EXTEND_PATH=1 # remove to not adapt python path
+
 show_help () {
 	echo -e "\nUsage: `basename $0` <SCRIPT>\n"
 	echo -e "\t<SCRIPT>\t\tChesster script to run\n"
@@ -11,26 +13,29 @@ show_help () {
 	exit 1
 }
 
-
 RUNSCRIPT=$1
 
 [ -v $( command -v python ) ] && { echo "No python installed."; show_help; }
 [ -v $RUNSCRIPT ] && { echo "No script selected."; show_help; }
 
 # EXTEND PYTHONOPATH
-for ext_proj in $( find ../ -iname "requirements.txt" | grep -v "chesster-github" | sed -e "s/\/requirements.txt//g" )
-do
-	# echo "Adding project '$ext_proj' to PYTHONPATH"
-	ext_proj=$( readlink -f $ext_proj )
-	if [ -v $PYTHONPATH ]
-	then
-		export PYTHONPATH="$ext_proj"
-	else
-		export PYTHONPATH="${PYTHONPATH}:$ext_proj"
-	fi
-done
-# echo "PYTHONPATH=${PYTHONPATH}"
+if [ $EXTEND_PATH == 1 ]; then
+	[ -z "$( uname -a | grep -i "cygwin" )"/ ] &&\
+	{ SEP=":"; CYG=0; } ||\
+	{ SEP=";"; CYG=1; }
 
+	#echo "PYTHONPATH=${PYTHONPATH}"
+	for ext_proj in $( find ../ -iname "requirements.txt" |\
+	sed -e "s/\/requirements.txt//g" )
+	do
+		echo "Adding source code project '$ext_proj'"
+		ext_proj=$( readlink -f $ext_proj )
+		[ $CYG == 1 ] && ext_proj=$( cygpath -w "$ext_proj" )
+		[ -z $PYTHONPATH ] && export PYTHONPATH="$ext_proj" ||\
+		export PYTHONPATH="${PYTHONPATH}${SEP}${ext_proj}"
+	done
+	echo "PYTHONPATH=${PYTHONPATH}"
+fi
 shift
 python chesster/chesster_${RUNSCRIPT}.py $@
 [ $? == 2 ] && { echo "Script '$RUNSCRIPT' does not exist."; show_help; }

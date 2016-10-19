@@ -3,16 +3,16 @@
 
 [![GitHub release](https://img.shields.io/github/release/BastiTee/chesster.svg?maxAge=2592000)](https://github.com/BastiTee/chesster/releases/tag/0.1.0)
 ![Python 2 support](https://img.shields.io/badge/python2-stable-green.svg)
-![Python 3 support](https://img.shields.io/badge/python3-untested-red.svg)
+![Python 3 support](https://img.shields.io/badge/python3-wip-yellow.svg)
 
-This module contains 
+This module contains
 * a Python-frontend for any UCI-compatible chess engine (e.g. [Stockfish](https://stockfishchess.org/)) with Stockfish being included.
 * a Python-frontend for [pgn-extract](https://www.cs.kent.ac.uk/people/staff/djb/pgn-extract/).
 * a console client to play against Stockfish.
-* a command-line tool to analyse and annotate chess games in PGN format. 
+* a command-line tool to analyse and annotate chess games in PGN format.
 * a simple standalone-server to send UCI commands over the web to a chesster instance.
 
-## Tools 
+## Tools
 
 ### chesster_analyze
 
@@ -20,8 +20,8 @@ This module contains
 usage: chesster_analyze.py [-h] [-i <INPUT-FILE>] [-o <OUTPUT-DIR>]
                            [-t <T_MS>] [-p] [-d] [-v]
 
-Analyze and annotate one or more games provided by a PGN file. 
-						   
+Analyze and annotate one or more games provided by a PGN file.
+
 optional arguments:
   -h, --help       show this help message and exit
   -i <INPUT-FILE>  Input PGN file.
@@ -43,10 +43,10 @@ Input file example:
 [Black "Player, Black"]
 [Result "1-0"]
 
-1. e4 c5 2. Nf3 e6 3. c4 Nc6 4. Be2 d5 5. d3 d4 6. O-O Bd6 
-7. Bd2 Nf6 8. a3 O-O 9. b4 cxb4 10. axb4 e5 11. b5 Ne7 
-12. c5 Bc7 13. b6 axb6 14. Rxa8 bxc5 15. Qc2 Qd6 16. Na3 
-Bd7 17. Nc4 Qc6 18. Qa2 Rxa8 19. Qxa8+ Nc8 20. Ra1 Ne8 
+1. e4 c5 2. Nf3 e6 3. c4 Nc6 4. Be2 d5 5. d3 d4 6. O-O Bd6
+7. Bd2 Nf6 8. a3 O-O 9. b4 cxb4 10. axb4 e5 11. b5 Ne7
+12. c5 Bc7 13. b6 axb6 14. Rxa8 bxc5 15. Qc2 Qd6 16. Na3
+Bd7 17. Nc4 Qc6 18. Qa2 Rxa8 19. Qxa8+ Nc8 20. Ra1 Ne8
 21. Nfxe5 Nb6 22. Nxb6 Qd6 23. Nbxd7 f6 24. Qxe8+ 1-0
 ```
 
@@ -96,7 +96,7 @@ usage: chesster_analyze_daemon.py [-h] [-i <WORKDIR>] [-t <T_MS>] [-v]
                                   [-r <INTERVAL>]
 
 A daemon to analyze PGN-file games in a watch folder.
-								  
+
 optional arguments:
   -h, --help     show this help message and exit
   -i <WORKDIR>   Input working directory.
@@ -168,10 +168,10 @@ Screenshot:
   \-----------------/
     a b c d e f g h
 
-... 
+...
 ```
 
-### chesster_server 
+### chesster_server
 
 ```
 usage: chesster_server.py [-h] [-d <HOSTNAME>] [-p <PORT>] [-v]

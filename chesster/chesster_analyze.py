@@ -17,7 +17,7 @@ parser.add_argument('-v', action='store_true',
         help='Verbose output.')
 args = parser.parse_args()
 if args.i == None:
-    print 'No input file set.'
+    print ('No input file set.')
     parser.print_help()
     exit()
 if args.o == None:
@@ -27,12 +27,12 @@ from bptbx.b_logging import setup_logging
 setup_logging(args.v)
 
 from multiprocessing import cpu_count
-from chesster.core.uci_frontend import ChessterUciFrontend    
+from chesster.core.uci_frontend import ChessterUciFrontend
 from chesster.core.analyzer import ChessterAnalyzer
 
 chesster_server = ChessterUciFrontend()
-try:                   
-    options = { 
+try:
+    options = {
                'setoption name Hash value 32',
                'setoption name Threads value {}'.format(cpu_count()),
                'setoption name Skill Level value 20',
@@ -41,6 +41,6 @@ try:
     chesster_analyser = ChessterAnalyzer(chesster_server)
     chesster_analyser.analyze(args.i, args.o, args.t, args.p, args.d)
 except KeyboardInterrupt:
-    print 'Aborted.'
+    print ('Aborted.')
 finally:
     chesster_server.shutdown()
