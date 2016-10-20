@@ -12,6 +12,27 @@ This module contains
 * a command-line tool to analyse and annotate chess games in PGN format.
 * a simple standalone-server to send UCI commands over the web to a chesster instance.
 
+## Installation
+
+If you have downloaded a release or the master branch you can run
+
+    python setup.py install
+
+With `pip` and `git` installed, you can also download and install chesster directly
+
+    pip install git+git://github.com/BastiTee/chesster.git#egg=chesster
+
+This will give you a bleeding-edge master version. For a specific release run
+
+    pip install git+git://github.com/BastiTee/chesster.git@0.2.0#egg=chesster
+
+Afterwards you can run chesster using one of the four supported commands:
+
+    python -m chesster.chesster_analyze
+    python -m chesster.chesster_analyze_daemon
+    python -m chesster.chesster_play
+    python -m chesster.chesster_server
+
 ## Tools
 
 ### chesster_analyze

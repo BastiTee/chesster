@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
 	name='chesster',
-    version='0.2.x',
+    version='0.2.0',
     description='''Chesster - Personal chess buddy.''',
 	long_description='''Chesster - Personal chess buddy.''',
     author='Basti Tee',
