@@ -1,12 +1,13 @@
 #!/bin/bash
 
 EXTEND_PATH=1 # remove to not adapt python path
+[ -z $( command -v python3 ) ] && PYC="python" || PYC="python3"
 
 show_help () {
 	echo -e "\nUsage: `basename $0` <SCRIPT>\n"
 	echo -e "\t<SCRIPT>\t\tChesster script to run\n"
 	echo -e "Supported scripts:\n"
-	for script in $( python -m chesster ); do
+	for script in $( $PYC -m chesster ); do
 		echo $script
 	done | sed -r -e "s/^[^_]+_/\t/g"
 	echo
@@ -15,15 +16,14 @@ show_help () {
 
 RUNSCRIPT=$1
 
-[ -v $( command -v python ) ] && { echo "No python installed."; show_help; }
+[ -v $( command -v $PYC ) ] && { echo "No python installed."; show_help; }
 [ -v $RUNSCRIPT ] && { echo "No script selected."; show_help; }
 
 # EXTEND PYTHONOPATH
 if [ $EXTEND_PATH == 1 ]; then
-	[ -z "$( uname -a | grep -i "cygwin" )"/ ] &&\
+	[ -z $( uname -a | grep -i "cygwin" ) ] &&\
 	{ SEP=":"; CYG=0; } ||\
 	{ SEP=";"; CYG=1; }
-
 	#echo "PYTHONPATH=${PYTHONPATH}"
 	for ext_proj in $( find ../ -iname "requirements.txt" |\
 	sed -e "s/\/requirements.txt//g" )
@@ -37,5 +37,6 @@ if [ $EXTEND_PATH == 1 ]; then
 	echo "PYTHONPATH=${PYTHONPATH}"
 fi
 shift
-python chesster/chesster_${RUNSCRIPT}.py $@
+$PYC chesster/chesster_${RUNSCRIPT}.py $@
 [ $? == 2 ] && { echo "Script '$RUNSCRIPT' does not exist."; show_help; }
+
