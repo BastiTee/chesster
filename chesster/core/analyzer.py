@@ -3,7 +3,8 @@ from os import makedirs, listdir, rename
 from os import path
 import re
 from shutil import copy
-from time import time
+from time import time, sleep, gmtime, strftime
+import datetime
 from Chessnut import Game
 from dateutil.parser import parse
 from tabulate import tabulate
@@ -12,7 +13,8 @@ from bptbx.b_iotools import remove_silent
 from bptbx import b_legacy
 from chesster.core.position import Position
 from chesster.core.tagset import get_pgn_tag_string, ChessterTagSet, \
-append_chesster_tagset_ordered
+    append_chesster_tagset_ordered
+
 
 class ChessterAnalyzer:
 
@@ -33,13 +35,16 @@ class ChessterAnalyzer:
     def analyze(self, pgn_in_file, pgn_out_folder, engine_movetime,
                 create_playbook, delete_source):
 
-        keep_temp_files = False # dev
+        keep_temp_files = False  # dev
 
-        pgn_in_file, pgn_out_folder = self._verify_io_settings(pgn_in_file, pgn_out_folder)
+        pgn_in_file, pgn_out_folder = self._verify_io_settings(
+            pgn_in_file, pgn_out_folder)
 
         analysis_input_files = []
         analysis_output_files = []
-        now = time()
+
+        # list current files
+        curr_files = listdir(pgn_out_folder)
 
         # split PGN into single files
         logging.info('-- splitting input file..')
@@ -48,34 +53,40 @@ class ChessterAnalyzer:
         p = get_command_process(cmd, pgn_out_folder, stdin=None, stdout=None)
         p.wait()
 
+        # get new files
+        new_files = list(filter(lambda x: x not in curr_files,
+                                listdir(pgn_out_folder)))
+        self.temporary_files += new_files
+
         # rename input files
-        for name in listdir(pgn_out_folder):
+        for name in new_files:
             old_name = path.join(pgn_out_folder, name)
             if path.isdir(old_name):
                 continue
             pattern = re.compile('[0-9]+\\.pgn')
             if not pattern.match(name):
                 continue
-            modts = max(path.getmtime(old_name), path.getctime(old_name))
-            modified = True if modts > now else False
-            if not modified:  # only work with newly created files
-                continue
-            logging.debug('{} {} = {}'.format(modified, name, modts))
             basename = path.basename(name)
             basename = re.sub('\\.pgn$', '', basename)
-            new_name = path.join(pgn_out_folder, basename.zfill(5) + '_01_split.pgn')
+            new_name = path.join(
+                pgn_out_folder, basename.zfill(5) + '_01_split.pgn')
             remove_silent(new_name)
             rename(old_name, new_name)
             analysis_input_files.append(new_name)
 
+        logging.info('-- analyzing games..')
+
         # analyze games
         analysis_input_files.sort()
         for analysis_input_file in analysis_input_files:
-            file_out = self._do_game_analysis(analysis_input_file, pgn_out_folder, engine_movetime)
+            file_out = self._do_game_analysis(
+                analysis_input_file, pgn_out_folder, engine_movetime)
             analysis_output_files.append(file_out)
 
         if create_playbook:
             self._create_playbook(analysis_output_files, pgn_out_folder)
+
+        logging.info('-- removing temporary files..')
 
         # cleanup
         if not keep_temp_files:
@@ -94,6 +105,8 @@ class ChessterAnalyzer:
         if delete_source:
             remove_silent(pgn_in_file)
 
+        logging.info('-- done processing')
+
     def _verify_io_settings(self, pgn_in_file, pgn_out_folder):
         if pgn_in_file == None:
             raise IOError('pgn_in_file cannot be None.')
@@ -105,7 +118,8 @@ class ChessterAnalyzer:
             with open(pgn_in_file):
                 pass
         except IOError:
-            raise IOError('pgn_in_file \'{}\' does not exist!'.format(pgn_in_file))
+            raise IOError(
+                'pgn_in_file \'{}\' does not exist!'.format(pgn_in_file))
         if not path.exists(pgn_out_folder):
             makedirs(pgn_out_folder)
         return pgn_in_file, pgn_out_folder
@@ -118,7 +132,7 @@ class ChessterAnalyzer:
             re.sub('[,\. ]', '', tags['white']),
             re.sub('[,\. ]', '', tags['black']),
             re.sub('1/2', '0.5', tags['result']),
-            )
+        )
         return filename
 
     def _do_game_analysis(self, pgn_in_file, pgn_out_folder, engine_movetime):
@@ -128,15 +142,19 @@ class ChessterAnalyzer:
         game_id = re.sub('_01_split\\.pgn$', '', game_id)
 
         chessgame, moves, result, _ = self._extract_chessgame(pgn_in_file)
-        file_annotated_game, positions = self._annotate_game(chessgame, moves, game_id, pgn_out_folder, result, engine_movetime)
+        file_annotated_game, positions = self._annotate_game(
+            chessgame, moves, game_id, pgn_out_folder, result, engine_movetime)
         self.temporary_files.append(file_annotated_game)
-        file_fixed_tags, fixed_tags = self._extract_fixed_tags(pgn_in_file, pgn_out_folder, game_id, positions)
+        file_fixed_tags, fixed_tags = self._extract_fixed_tags(
+            pgn_in_file, pgn_out_folder, game_id, positions)
         self.temporary_files.append(file_fixed_tags)
         game_tags_for_id = self._extract_dict_from_tags(fixed_tags)
         self.game_tags[game_id] = game_tags_for_id
-        file_merged = self._merge_tags_and_annotations(file_fixed_tags, file_annotated_game, pgn_out_folder, game_id)
+        file_merged = self._merge_tags_and_annotations(
+            file_fixed_tags, file_annotated_game, pgn_out_folder, game_id)
         self.temporary_files.append(file_merged)
-        file_fin = self._create_output_format(file_merged, pgn_out_folder, game_id)
+        file_fin = self._create_output_format(
+            file_merged, pgn_out_folder, game_id)
         return file_fin
 
     def _pgn_tag_to_keyvalue(self, pgn_tag):
@@ -155,10 +173,11 @@ class ChessterAnalyzer:
         return game_info
 
     def _create_playbook(self, pgn_files, pgn_out_folder):
-        ofile = open (path.join(pgn_out_folder, self.playbook_name), 'w')
-        pgn_files = b_legacy.b_sorted(pgn_files, cmp=self._compare_output_files)
+        ofile = open(path.join(pgn_out_folder, self.playbook_name), 'w')
+        pgn_files = b_legacy.b_sorted(
+            pgn_files, cmp=self._compare_output_files)
         for pgn_file in pgn_files:
-            ifile = open (pgn_file)
+            ifile = open(pgn_file)
             for line in ifile:
                 ofile.write(line.strip() + '\n')
             ifile.close()
@@ -184,21 +203,22 @@ class ChessterAnalyzer:
         logging.info('-- creating output for game #{}'.format(game_id))
         cmd = ('{0} {1} -s --output {2}'
                .format(self.server.pgn_extract_path, path.join(pgn_out_folder, file_merged),
-               file_fin))
+                       file_fin))
         p = get_command_process(cmd, stdout=None)
         p.wait()
 
         return file_fin
 
     def _merge_tags_and_annotations(self, file_fixed_tags, file_annotated_game, pgn_out_folder, game_id):
-        ofile = open (path.join(pgn_out_folder, game_id + '_04_merged.pgn'), 'w')
+        ofile = open(path.join(pgn_out_folder,
+                               game_id + '_04_merged.pgn'), 'w')
         # write  tags
-        ifile = open (path.join(pgn_out_folder, file_fixed_tags))
+        ifile = open(path.join(pgn_out_folder, file_fixed_tags))
         for line in ifile:
             ofile.write(line.strip() + '\n')
         ifile.close()
         # write annotations
-        ifile = open (path.join(pgn_out_folder, file_annotated_game))
+        ifile = open(path.join(pgn_out_folder, file_annotated_game))
         for line in ifile:
             ofile.write(line.strip() + '\n')
         ifile.close()
@@ -219,11 +239,13 @@ class ChessterAnalyzer:
                 move = moves[move_idx]
             except IndexError:
                 move = None
-            logging.debug('   -- analyze move \'{}\' on fen \'{}\''.format(move, fen))
+            logging.debug(
+                '   -- analyze move \'{}\' on fen \'{}\''.format(move, fen))
             last_info = ''
             if use_engine:
                 self.server.eval_uci('position fen {0}'.format(fen))
-                output = self.server.eval_uci('go movetime {}'.format(engine_movetime))
+                output = self.server.eval_uci(
+                    'go movetime {}'.format(engine_movetime))
                 for out in output:
                     if out and 'info' in out and 'score' in out:
                         last_info = out
@@ -243,7 +265,8 @@ class ChessterAnalyzer:
         for position in positions:
             debug_string, debug_headers = position.get_debug_string()
             debug_positions.append(debug_string)
-        logging.debug(tabulate(debug_positions, debug_headers, tablefmt='psql'))
+        logging.debug(tabulate(debug_positions,
+                               debug_headers, tablefmt='psql'))
 
         game_annotation = []
         for position in positions:
@@ -251,7 +274,7 @@ class ChessterAnalyzer:
                 continue
             # append move and annotation
             game_annotation.append('{}{} '.format(
-                            position.move_played, position.annotation))
+                position.move_played, position.annotation))
             if position.comment:
                 game_annotation.append('{{ {0} }} '.format(position.comment))
             # on blunders append the full best line
@@ -259,14 +282,17 @@ class ChessterAnalyzer:
                 game_annotation.append('( {0} ) '.format(position.best_line))
             # on mistakes append the first three moves of the best line
             elif position.annotation == '?':
-                bestline = b_legacy.b_filter(None, position.best_line.split(' '))
-                game_annotation.append('( {0} ) '.format(' '.join(bestline[0:3])))
+                bestline = b_legacy.b_filter(
+                    None, position.best_line.split(' '))
+                game_annotation.append(
+                    '( {0} ) '.format(' '.join(bestline[0:3])))
         game_annotation.append(result)
 
         logging.info('-- game annotation for game #{}:\n{}'.format(game_id,
-                                                ''.join(game_annotation)))
+                                                                   ''.join(game_annotation)))
 
-        ofile = open (path.join(pgn_out_folder, game_id + '_02_annotated.pgn'), 'w')
+        ofile = open(path.join(pgn_out_folder,
+                               game_id + '_02_annotated.pgn'), 'w')
         ofile.write(''.join(game_annotation) + '\n')
         ofile.close()
         return ofile.name, positions
@@ -275,7 +301,7 @@ class ChessterAnalyzer:
 
         # read existing tags
         cmd = ('{} {} -s -e{}'.format(self.server.pgn_extract_path,
-                pgn_in_file, self.server.pgn_extract_eco))
+                                      pgn_in_file, self.server.pgn_extract_eco))
         p = get_command_process(cmd, stdin=None)
         fixed_tags = []
         for line in p.stdout.readlines():
@@ -284,14 +310,15 @@ class ChessterAnalyzer:
                 line = line.decode()
             line = line.strip()
             if line and line.startswith('[') and \
-            not line.startswith('[%') and not 'Analyze This' in line:
+                    not line.startswith('[%') and not 'Analyze This' in line:
                 fixed_tags.append(self._fix_tag(line))
 
         fixed_tags = self._append_chesster_specific_tags(fixed_tags, positions)
         fixed_tags = b_legacy.b_sorted(fixed_tags, cmp=self._compare_tags)
 
         logging.info('-- writing tags for game #{}'.format(game_id))
-        ofile = open (path.join(pgn_out_folder, game_id + '_03_tagfix.pgn'), 'w')
+        ofile = open(path.join(pgn_out_folder,
+                               game_id + '_03_tagfix.pgn'), 'w')
         for fixed_tag in fixed_tags:
             logging.debug('   {}'.format(fixed_tag))
             ofile.write(fixed_tag + '\n')
@@ -315,15 +342,18 @@ class ChessterAnalyzer:
             elif not position.white_move and position.annotation == '??':
                 b_blun += 1
             w_bestpos = self._get_better_position(w_bestpos,
-                    position.score_display, True, not position.white_move)
+                                                  position.score_display, True, not position.white_move)
             b_bestpos = self._get_better_position(b_bestpos,
-                    position.score_display, False, not position.white_move)
-        tags.append(get_pgn_tag_string(ChessterTagSet.MISTAKES, '{}/{}'.format(w_mis, b_mis)))
-        tags.append(get_pgn_tag_string(ChessterTagSet.BLUNDERS, '{}/{}'.format(w_blun, b_blun)))
-        tags.append(get_pgn_tag_string(ChessterTagSet.BEST_POSITIONS, '{}/{}'.format(w_bestpos, b_bestpos)))
+                                                  position.score_display, False, not position.white_move)
+        tags.append(get_pgn_tag_string(
+            ChessterTagSet.MISTAKES, '{}/{}'.format(w_mis, b_mis)))
+        tags.append(get_pgn_tag_string(
+            ChessterTagSet.BLUNDERS, '{}/{}'.format(w_blun, b_blun)))
+        tags.append(get_pgn_tag_string(ChessterTagSet.BEST_POSITIONS,
+                                       '{}/{}'.format(w_bestpos, b_bestpos)))
         return tags
 
-    def _get_better_position (self, curr_bestpos, new_bestpos, calc_for_white, white_move=None):
+    def _get_better_position(self, curr_bestpos, new_bestpos, calc_for_white, white_move=None):
         result = None
         if 'M0' == str(new_bestpos):  # corner-case: one player mated
             if calc_for_white == white_move:
@@ -331,12 +361,16 @@ class ChessterAnalyzer:
             else:
                 result = str(curr_bestpos)
         else:
-            cp1 = float(re.sub('M', '', curr_bestpos)) * 10000.0 if 'M' in str(curr_bestpos) else float(curr_bestpos)
-            cp2 = float(re.sub('M', '', new_bestpos)) * 10000.0  if 'M' in str(new_bestpos) else float(new_bestpos)
-            # on two mates flip comparison because mate in 1 is better than mate in 2
-            two_mates = True if ('M' in str(curr_bestpos) and 'M' in str(new_bestpos)) else False
+            cp1 = float(re.sub('M', '', curr_bestpos)) * \
+                10000.0 if 'M' in str(curr_bestpos) else float(curr_bestpos)
+            cp2 = float(re.sub('M', '', new_bestpos)) * \
+                10000.0 if 'M' in str(new_bestpos) else float(new_bestpos)
+            # on two mates flip comparison because mate in 1 is better than
+            # mate in 2
+            two_mates = True if ('M' in str(curr_bestpos)
+                                 and 'M' in str(new_bestpos)) else False
             calc_for_white = not calc_for_white if two_mates else calc_for_white
-            selection = max (cp1, cp2) if calc_for_white else min(cp1, cp2)
+            selection = max(cp1, cp2) if calc_for_white else min(cp1, cp2)
             result = curr_bestpos if cp1 == selection else new_bestpos
         logging.debug('[{}/{}move] CURR = {} NEW = {} >> {}'.format(
             'W' if calc_for_white else 'B', 'W' if white_move else 'B',
@@ -354,10 +388,10 @@ class ChessterAnalyzer:
     def _get_tag_rank(self, tag):
         tag = tag.lower()
         order = {
-                'event': 0, 'site': 1, 'date': 2, 'round': 3, 'white': 4,
-                'black': 5, 'result': 6, 'eco': 7, 'opening': 8,
-                'variation': 9, 'timecontrol': 10, 'termination': 11,
-                'whiteelo': 12, 'blackelo': 13, 'chessterts': 14 }
+            'event': 0, 'site': 1, 'date': 2, 'round': 3, 'white': 4,
+            'black': 5, 'result': 6, 'eco': 7, 'opening': 8,
+            'variation': 9, 'timecontrol': 10, 'termination': 11,
+            'whiteelo': 12, 'blackelo': 13, 'chessterts': 14}
         order = append_chesster_tagset_ordered(order)
         if not tag:
             return 99
@@ -382,14 +416,15 @@ class ChessterAnalyzer:
             search_replace = pattern_line.split('=')
             if len(search_replace) != 2:
                 continue
-            tag = re.sub(search_replace[0], search_replace[1], tag, re.IGNORECASE)
+            tag = re.sub(search_replace[0], search_replace[
+                         1], tag, re.IGNORECASE)
 
         # Normalize date
         if '[Date' in tag:
             _, value = self._pgn_tag_to_keyvalue(tag)
             date_obj = parse(value)
             tag = '[Date "{}.{}.{}]"'.format(date_obj.year,
-                    str(date_obj.month).zfill(2), str(date_obj.day).zfill(2))
+                                             str(date_obj.month).zfill(2), str(date_obj.day).zfill(2))
         return tag
 
     def _filter_move(self, move):
@@ -403,7 +438,7 @@ class ChessterAnalyzer:
         # get game model
         chessgame = Game()
         cmd = ('{0} {1} -Wlalg --nomovenumbers --nocomments --nochecks -V --notags -s'
-       .format(self.server.pgn_extract_path, pgn_in_file))
+               .format(self.server.pgn_extract_path, pgn_in_file))
         p = get_command_process(cmd)
         stdout_content = p.stdout.readlines()
         # We need to decode the bytes from stdout when running on python 3

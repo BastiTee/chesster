@@ -1,8 +1,5 @@
 #!/bin/bash
 
-EXTEND_PATH=1 # remove to not adapt python path
-[ -z $( command -v python3 ) ] && PYC="python" || PYC="python3"
-
 show_help () {
 	echo -e "\nUsage: `basename $0` <SCRIPT>\n"
 	echo -e "\t<SCRIPT>\t\tChesster script to run\n"
@@ -14,19 +11,24 @@ show_help () {
 	exit 1
 }
 
-RUNSCRIPT=$1
+EXTEND_PATH=1 # Extend python path with necessary libs cloned next to chesster
 
+[ -z $( command -v python3 ) ] && PYC="python" || PYC="python3"
 [ -v $( command -v $PYC ) ] && { echo "No python installed."; show_help; }
+echo "Using python command: $PYC"
+
+RUNSCRIPT=$1
 [ -v $RUNSCRIPT ] && { echo "No script selected."; show_help; }
 
 # EXTEND PYTHONOPATH
-if [ $EXTEND_PATH == 1 ]; then
+if [ "$EXTEND_PATH" == "1" ]; then
 	[ -z $( uname -a | grep -i "cygwin" ) ] &&\
 	{ SEP=":"; CYG=0; } ||\
 	{ SEP=";"; CYG=1; }
 	#echo "PYTHONPATH=${PYTHONPATH}"
 	for ext_proj in $( find ../ -iname "requirements.txt" |\
-	sed -e "s/\/requirements.txt//g" )
+	sed -e "s/\/requirements.txt//g" |\
+	grep -e "Chessnut" -e "bastis-python-toolbox" -e "chesster" )
 	do
 		echo "Adding source code project '$ext_proj'"
 		ext_proj=$( readlink -f $ext_proj )
@@ -39,4 +41,3 @@ fi
 shift
 $PYC chesster/chesster_${RUNSCRIPT}.py $@
 [ $? == 2 ] && { echo "Script '$RUNSCRIPT' does not exist."; show_help; }
-

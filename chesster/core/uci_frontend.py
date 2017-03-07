@@ -5,14 +5,16 @@ from time import sleep
 from bptbx.b_cmdline import get_command_process, get_platform
 from bptbx.b_legacy import get_python_major_version
 from chesster.core.position import Position
+from chesster.core import externals
+
 
 class ChessterUciFrontend:
     """Core UCI frontend"""
 
-    script_path = path.dirname(path.realpath(__file__))
-    """Path to this Python script"""
     engine_proc = None
     """Subprocess for the underlying engine"""
+    engine_thread = None
+    """Working thread"""
     engine_path = None
     """Path to engine binary"""
     pgn_extract_path = None
@@ -21,7 +23,7 @@ class ChessterUciFrontend:
     """Path to pgn extract opening book"""
     output = []
     """A shared container for the engine's output"""
-    no_response_coms = ['position', 'setoption', 'ucinewgame', 'quit' ]
+    no_response_coms = ['position', 'setoption', 'ucinewgame', 'quit']
     """Uci commands that don't require evaluating the response"""
     lock = Lock()
     """Re-entrance lock for core engine operations"""
@@ -29,23 +31,13 @@ class ChessterUciFrontend:
     """Signal that engine is finished operating"""
 
     def __init__(self):
-        parent_dir = path.dirname(self.script_path)
         platform_type = get_platform()
-        logging.debug('Platform type is {}'.format(platform_type))
-        if 'windows' in platform_type or 'cygwin' in platform_type:
-            self.engine_path = path.join(parent_dir,
-                                    'stockfish/stockfish-7-x64-win.exe')
-            self.pgn_extract_path = path.join(parent_dir,
-                                    'pgnextract/pgn-extract-17-21-win.exe')
-        elif 'linux' in get_platform():
-            # assumed to be preinstalled
-            self.engine_path = 'stockfish'
-            self.pgn_extract_path = path.join(parent_dir,
-                                    'pgnextract/pgn-extract-17-21-pi')
-        self.pgn_extract_eco = path.join(parent_dir, 'pgnextract/eco.pgn')
+        self.engine_path = externals.get_stockfish_path()
+        self.pgn_extract_path = externals.get_pgn_extract_path()
+        self.pgn_extract_eco = externals.get_pgn_extract_opening_book()
         self.engine_proc = get_command_process(self.engine_path)
-        engine_thread = Thread(target=self._handle_engine_output)
-        engine_thread.start()
+        self.engine_thread = Thread(target=self._handle_engine_output)
+        self.engine_thread.start()
 
     def init_engine(self, options={}):
         self.eval_uci('uci')
@@ -60,7 +52,7 @@ class ChessterUciFrontend:
         uci_com = uci_string.split(' ')[0]
         if any(uci_com in s for s in self.no_response_coms):
             self._eval_uci_async(uci_string)
-            return { 'Ok.' }
+            return {'Ok.'}
         else:
             return self._eval_uci_sync(uci_string)
 
@@ -87,10 +79,12 @@ class ChessterUciFrontend:
         output = self._eval_uci_sync('go movetime {0}'.format(ttm))
         for line in output:
             if 'bestmove' in line:
-                return { line.split(' ')[1] }
+                return {line.split(' ')[1]}
 
     def shutdown(self):
         self.engine_proc.kill()
+        self.engine_proc.stdin.write(self._pack_engine_in('uci'))
+        self.engine_proc.stdin.flush()
 
     def _eval_uci_sync(self, command):
         self.lock.acquire()
