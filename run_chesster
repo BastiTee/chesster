@@ -19,6 +19,7 @@ RUNSCRIPT=$1
 [ -v $RUNSCRIPT ] && { echo "No script selected."; show_help; }
 shift
 
-echo "-- $PYC chesster/chesster_${RUNSCRIPT}.py $@"
-$PYC chesster/chesster_${RUNSCRIPT}.py $@
+CMD="$PYC -m chesster.chesster_${RUNSCRIPT} $@"
+echo "-- $CMD"
+eval $CMD
 [ $? == 2 ] && { echo "Script '$RUNSCRIPT' does not exist."; show_help; }
