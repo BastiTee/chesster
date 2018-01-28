@@ -6,6 +6,7 @@
 .pydevproject
 out_dir/
 tag_replace_patterns.properties
+.ropeproject 
 
 ###############################################################################
 # @https://github.com/github/gitignore/blob/master/Python.gitignore
