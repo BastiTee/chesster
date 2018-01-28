@@ -5,23 +5,24 @@ from chesster.core.uci_frontend import ChessterUciFrontend
 from chesster.core.analyzer import ChessterAnalyzer
 from bptbx.b_iotools import read_file_to_list, write_list_to_file
 from bptbx.b_daemon import Daemon
-    
+
+
 class ChessterDaemon(Daemon):
 
     workdir = None
     log_filepath = None
     time_to_think = 5000
-    options = { 
-           'setoption name Hash value 32',
-           'setoption name Threads value {}'.format(cpu_count()),
-           'setoption name Skill Level value 20',
-        }
-    
+    options = {
+        'setoption name Hash value 32',
+        'setoption name Threads value {}'.format(cpu_count()),
+        'setoption name Skill Level value 20',
+    }
+
     def configure_daemon(self, workdir, time_to_think):
         self.workdir = path.abspath(workdir)
         self.log_filepath = path.join(workdir, '.chesster_server')
         self.time_to_think = time_to_think
-    
+
     def _run_daemon_process(self):
         logging.info('========== ChessterDaemon started processing')
         chesster_server = ChessterUciFrontend()
@@ -33,16 +34,16 @@ class ChessterDaemon(Daemon):
                 continue
             if file_path in already_processed:
                 logging.info(
-                'File \'{}\' processed before according to log list.'.format(
-                                                    file_path))
+                    'File \'{}\' processed before according to log list.'
+                    .format(file_path))
                 continue
             content = read_file_to_list(file_path)
             tag_found = False
-            for line in content: 
-                if 'ChessterAnalysisTs' in line:                
+            for line in content:
+                if 'ChessterAnalysisTs' in line:
                     logging.info(
-                    'File \'{}\' processed before according to tags.'.format(
-                                                    file_path))
+                        'File \'{}\' processed before according to tags.'
+                        .format(file_path))
                     tag_found = True
             if tag_found:
                 continue
@@ -51,6 +52,6 @@ class ChessterDaemon(Daemon):
                 file_path, self.workdir, self.time_to_think, False, False)
             already_processed.append(file_path)
             write_list_to_file(already_processed, self.log_filepath)
-            
+
         chesster_server.shutdown()
         logging.info('========== ChessterDaemon finished processing')
