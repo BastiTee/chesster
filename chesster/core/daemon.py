@@ -18,10 +18,11 @@ class ChessterDaemon(Daemon):
         'setoption name Skill Level value 20',
     }
 
-    def configure_daemon(self, workdir, time_to_think):
+    def configure_daemon(self, workdir, time_to_think, pattern_file):
         self.workdir = path.abspath(workdir)
         self.log_filepath = path.join(workdir, '.chesster_server')
         self.time_to_think = time_to_think
+        self.pattern_file = pattern_file
 
     def _run_daemon_process(self):
         logging.info('========== ChessterDaemon started processing')
@@ -49,7 +50,8 @@ class ChessterDaemon(Daemon):
                 continue
             chesster_analyzer = ChessterAnalyzer(chesster_server)
             chesster_analyzer.analyze(
-                file_path, self.workdir, self.time_to_think, False, False)
+                file_path, self.workdir, self.time_to_think, False, False,
+                self.pattern_file)
             already_processed.append(file_path)
             write_list_to_file(already_processed, self.log_filepath)
 

@@ -1,5 +1,5 @@
-bottle >= 0.12
-Chessnut >= 0.3.1
-tabulate >= 0.7.5
-python-dateutil >= 2.5.1
-git+git://github.com/BastiTee/bastis-python-toolbox.git@HEAD
+bottle == 0.12.13
+Chessnut == 0.3.1
+tabulate == 0.8.2
+python-dateutil == 2.6.1
+git+git://github.com/BastiTee/bastis-python-toolbox.git@0.2.0

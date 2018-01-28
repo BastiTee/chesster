@@ -3,8 +3,7 @@ from os import makedirs, listdir, rename
 from os import path
 import re
 from shutil import copy
-from time import time, sleep, gmtime, strftime
-import datetime
+from time import time
 from Chessnut import Game
 from dateutil.parser import parse
 from tabulate import tabulate
@@ -33,7 +32,9 @@ class ChessterAnalyzer:
         self.server = server
 
     def analyze(self, pgn_in_file, pgn_out_folder, engine_movetime,
-                create_playbook, delete_source):
+                create_playbook, delete_source, pattern_file=None):
+
+        pattern_file = self._load_pattern_file(pattern_file)
 
         keep_temp_files = False  # dev
 
@@ -80,7 +81,8 @@ class ChessterAnalyzer:
         analysis_input_files.sort()
         for analysis_input_file in analysis_input_files:
             file_out = self._do_game_analysis(
-                analysis_input_file, pgn_out_folder, engine_movetime)
+                analysis_input_file, pgn_out_folder, engine_movetime,
+                pattern_file)
             analysis_output_files.append(file_out)
 
         if create_playbook:
@@ -135,7 +137,8 @@ class ChessterAnalyzer:
         )
         return filename
 
-    def _do_game_analysis(self, pgn_in_file, pgn_out_folder, engine_movetime):
+    def _do_game_analysis(self, pgn_in_file, pgn_out_folder, engine_movetime,
+                          pattern_file):
 
         self.temporary_files.append(pgn_in_file)
         game_id = path.basename(pgn_in_file)
@@ -146,7 +149,7 @@ class ChessterAnalyzer:
             chessgame, moves, game_id, pgn_out_folder, result, engine_movetime)
         self.temporary_files.append(file_annotated_game)
         file_fixed_tags, fixed_tags = self._extract_fixed_tags(
-            pgn_in_file, pgn_out_folder, game_id, positions)
+            pgn_in_file, pgn_out_folder, game_id, positions, pattern_file)
         self.temporary_files.append(file_fixed_tags)
         game_tags_for_id = self._extract_dict_from_tags(fixed_tags)
         self.game_tags[game_id] = game_tags_for_id
@@ -297,11 +300,13 @@ class ChessterAnalyzer:
         ofile.close()
         return ofile.name, positions
 
-    def _extract_fixed_tags(self, pgn_in_file, pgn_out_folder, game_id, positions):
+    def _extract_fixed_tags(self, pgn_in_file, pgn_out_folder, game_id,
+                            positions, pattern_file):
 
         # read existing tags
-        cmd = ('{} {} -s -e{}'.format(self.server.pgn_extract_path,
-                                      pgn_in_file, self.server.pgn_extract_eco))
+        cmd = ('{} {} -s -e{}'.format(
+            self.server.pgn_extract_path, pgn_in_file,
+            self.server.pgn_extract_eco))
         p = get_command_process(cmd, stdin=None)
         fixed_tags = []
         for line in p.stdout.readlines():
@@ -310,8 +315,8 @@ class ChessterAnalyzer:
                 line = line.decode()
             line = line.strip()
             if line and line.startswith('[') and \
-                    not line.startswith('[%') and not 'Analyze This' in line:
-                fixed_tags.append(self._fix_tag(line))
+                    not line.startswith('[%') and 'Analyze This' not in line:
+                fixed_tags.append(self._fix_tag(line, pattern_file))
 
         fixed_tags = self._append_chesster_specific_tags(fixed_tags, positions)
         fixed_tags = b_legacy.b_sorted(fixed_tags, cmp=self._compare_tags)
@@ -400,17 +405,41 @@ class ChessterAnalyzer:
         except KeyError:
             return 99
 
-    def _fix_tag(self, tag):
-
-        # apply search replace patterns from file
-        pattern_file = None
-        pattern_file_path = path.join(self.script_path,
-                                      'tag_replace_patterns.properties')
+    def _load_file_or_none(self, filepath):
+        if not filepath:
+            return None
         try:
-            pattern_file = open(pattern_file_path)
+            return open(filepath)
         except IOError:
-            copy(pattern_file_path + '.default', pattern_file_path)
-            pattern_file = open(pattern_file_path)
+            return None
+
+    def _load_pattern_file(self, pattern_file):
+        logging.info('-- received ext patterns: {}'.format(pattern_file))
+        # if external file provided and readable, return first...
+        pattern_fh = self._load_file_or_none(pattern_file)
+        if pattern_fh:
+            logging.info('-- loading ext patterns from {}'
+                         .format(pattern_file))
+            return pattern_fh
+        # try to load copy from internal default file...
+        pattern_file = path.join(
+            self.script_path, 'tag_replace_patterns.properties')
+        pattern_fh = self._load_file_or_none(pattern_file)
+        if pattern_fh:
+            logging.info('-- loading from-def patterns from {}'
+                         .format(pattern_file))
+            return pattern_fh
+        # copy from default and load default set
+        copy(pattern_file + '.default', pattern_file)
+        pattern_fh = self._load_file_or_none(pattern_file)
+        if pattern_fh:
+            logging.info('-- loading def patterns from {}'
+                         .format(pattern_file))
+            return pattern_fh
+        return None
+
+    def _fix_tag(self, tag, pattern_file):
+        pattern_file.seek(0)
         for pattern_line in pattern_file:
             pattern_line = pattern_line.strip()
             search_replace = pattern_line.split('=')
@@ -423,8 +452,9 @@ class ChessterAnalyzer:
         if '[Date' in tag:
             _, value = self._pgn_tag_to_keyvalue(tag)
             date_obj = parse(value)
-            tag = '[Date "{}.{}.{}]"'.format(date_obj.year,
-                                             str(date_obj.month).zfill(2), str(date_obj.day).zfill(2))
+            tag = '[Date "{}.{}.{}]"'.format(
+                date_obj.year, str(date_obj.month).zfill(2),
+                str(date_obj.day).zfill(2))
         return tag
 
     def _filter_move(self, move):
